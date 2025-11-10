@@ -17,7 +17,7 @@ class AIService {
     if (apiKey != null && apiKey.isNotEmpty) {
       // Inicializar el modelo Gemini Flash para análisis de imágenes
       _model = GenerativeModel(
-        model: 'gemini-1.5-flash', 
+        model: 'gemini-2.0-flash', 
         apiKey: apiKey,
       );
       _geminiAvailable = true;
