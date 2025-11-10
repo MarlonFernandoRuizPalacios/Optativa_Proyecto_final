@@ -26,6 +26,10 @@ class DishController extends GetxController {
   final Rx<File?> selectedImage = Rx<File?>(null);
   final RxString analysisResult = ''.obs;
   final RxMap<String, dynamic> analyzedData = <String, dynamic>{}.obs;
+  
+  // ML Mode: true = local, false = cloud (Gemini)
+  final RxBool useLocalML = true.obs;
+  final RxString mlSource = 'local_ml'.obs;
 
   @override
   void onInit() {
@@ -100,9 +104,13 @@ class DishController extends GetxController {
     analysisError.value = false;
     analysisCancelled.value = false;
     errorMessage.value = '';
-    
+    mlSource.value = '';
+
     try {
-      // Use mock for testing or real API
+      // Configurar el modo de ML en el servicio
+      _aiService.setUseLocalML(useLocalML.value);
+      
+      // Usar servicio de IA (local o cloud según configuración)
       final result = await _aiService.analyzeDishImage(selectedImage.value!);
       // final result = await _aiService.analyzeDishImageMock(selectedImage.value!);
 
@@ -113,13 +121,22 @@ class DishController extends GetxController {
 
       if (result['success'] == true) {
         analyzedData.value = result;
+        mlSource.value = result['source'] ?? 'unknown';
+        
         analysisResult.value =
             'Platillo: ${result['dish_name']}\n\nIngredientes:\n${(result['ingredients'] as List).join(', ')}';
         analysisError.value = false;
         
+        // Mostrar fuente del análisis
+        String sourceText = mlSource.value == 'local_ml' 
+            ? '🤖 ML Local' 
+            : mlSource.value == 'gemini' 
+                ? '☁️ Gemini API' 
+                : 'IA';
+        
         Get.snackbar(
           'Análisis completado',
-          'Imagen analizada exitosamente',
+          'Imagen analizada con $sourceText',
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: AppColors.successGreen.withOpacity(0.9),
           colorText: Colors.white,
@@ -283,5 +300,32 @@ class DishController extends GetxController {
     selectedImage.value = null;
     analysisResult.value = '';
     analyzedData.clear();
+    mlSource.value = '';
+  }
+  
+  /// Cambiar modo de ML (local vs cloud)
+  void toggleMLMode() {
+    useLocalML.value = !useLocalML.value;
+    
+    Get.snackbar(
+      'Modo de IA cambiado',
+      useLocalML.value 
+          ? '🤖 Ahora usando ML Local (offline)'
+          : '☁️ Ahora usando Gemini API (online)',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: AppColors.primaryPurple.withOpacity(0.9),
+      colorText: Colors.white,
+      duration: const Duration(seconds: 2),
+      icon: Icon(
+        useLocalML.value ? Icons.phone_android : Icons.cloud,
+        color: Colors.white,
+      ),
+    );
+  }
+  
+  @override
+  void onClose() {
+    _aiService.dispose();
+    super.onClose();
   }
 }

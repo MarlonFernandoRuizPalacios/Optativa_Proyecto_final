@@ -20,6 +20,33 @@ class CaptureDishPage extends StatelessWidget {
         title: const Text('Capturar Platillo'),
         backgroundColor: AppColors.primaryPurple,
         foregroundColor: Colors.white,
+        actions: [
+          // Toggle para cambiar modo de IA
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Row(
+              children: [
+                Icon(
+                  controller.useLocalML.value ? Icons.phone_android : Icons.cloud,
+                  size: 20,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  controller.useLocalML.value ? 'Local' : 'Cloud',
+                  style: const TextStyle(fontSize: 12),
+                ),
+                Switch(
+                  value: controller.useLocalML.value,
+                  onChanged: (value) => controller.toggleMLMode(),
+                  activeColor: Colors.white,
+                  activeTrackColor: AppColors.successGreen,
+                  inactiveThumbColor: Colors.white,
+                  inactiveTrackColor: AppColors.accentBlue,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
       body: Obx(() {
         return SingleChildScrollView(
@@ -145,7 +172,9 @@ class CaptureDishPage extends StatelessWidget {
               // Analysis result - usando widgets
               if (controller.isAnalyzing.value)
                 LoadingCardWidget(
-                  message: 'Analizando imagen con IA...',
+                  message: controller.useLocalML.value 
+                      ? '🤖 Analizando con ML Local...'
+                      : '☁️ Analizando con Gemini API...',
                   subtitle: 'Esto puede tomar unos segundos',
                   showCancelButton: true,
                   onCancel: () => controller.cancelAnalysis(),
@@ -178,6 +207,44 @@ class CaptureDishPage extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const Spacer(),
+                            // Badge mostrando la fuente del análisis
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: controller.mlSource.value == 'local_ml'
+                                    ? AppColors.successGreen.withOpacity(0.2)
+                                    : AppColors.accentBlue.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    controller.mlSource.value == 'local_ml'
+                                        ? Icons.phone_android
+                                        : Icons.cloud,
+                                    size: 14,
+                                    color: controller.mlSource.value == 'local_ml'
+                                        ? AppColors.successGreen
+                                        : AppColors.accentBlue,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    controller.mlSource.value == 'local_ml'
+                                        ? 'Local'
+                                        : 'Cloud',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: controller.mlSource.value == 'local_ml'
+                                          ? AppColors.successGreen
+                                          : AppColors.accentBlue,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
