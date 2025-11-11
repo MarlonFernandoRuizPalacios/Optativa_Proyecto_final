@@ -20,33 +20,6 @@ class CaptureDishPage extends StatelessWidget {
         title: const Text('Capturar Platillo'),
         backgroundColor: AppColors.primaryPurple,
         foregroundColor: Colors.white,
-        actions: [
-          // Toggle para cambiar modo de IA
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: Row(
-              children: [
-                Icon(
-                  controller.useLocalML.value ? Icons.phone_android : Icons.cloud,
-                  size: 20,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  controller.useLocalML.value ? 'Local' : 'Cloud',
-                  style: const TextStyle(fontSize: 12),
-                ),
-                Switch(
-                  value: controller.useLocalML.value,
-                  onChanged: (value) => controller.toggleMLMode(),
-                  activeColor: Colors.white,
-                  activeTrackColor: AppColors.successGreen,
-                  inactiveThumbColor: Colors.white,
-                  inactiveTrackColor: AppColors.accentBlue,
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
       body: Obx(() {
         return SingleChildScrollView(
@@ -149,8 +122,9 @@ class CaptureDishPage extends StatelessWidget {
                           foregroundColor: AppColors.primaryPurple,
                         ),
                       ),
-                      // Show retry button only if analysis has been done
-                      if (controller.analysisResult.value.isNotEmpty) ...[
+                      // Show retry button only if analysis has been done AND it's not a "not food" error
+                      if (controller.analysisResult.value.isNotEmpty &&
+                          !controller.errorMessage.value.contains('no contiene comida')) ...[
                         const SizedBox(width: 8),
                         const Text('|', style: TextStyle(color: Colors.grey)),
                         const SizedBox(width: 8),
@@ -172,9 +146,7 @@ class CaptureDishPage extends StatelessWidget {
               // Analysis result - usando widgets
               if (controller.isAnalyzing.value)
                 LoadingCardWidget(
-                  message: controller.useLocalML.value 
-                      ? '🤖 Analizando con ML Local...'
-                      : '☁️ Analizando con Gemini API...',
+                  message: '☁️ Analizando imagen con IA...',
                   subtitle: 'Esto puede tomar unos segundos',
                   showCancelButton: true,
                   onCancel: () => controller.cancelAnalysis(),
@@ -182,9 +154,14 @@ class CaptureDishPage extends StatelessWidget {
               // Show error card if analysis failed
               else if (controller.analysisError.value)
                 ErrorCardWidget(
-                  title: 'Error en el análisis',
+                  title: controller.errorMessage.value.contains('no contiene comida') 
+                      ? 'No es comida'
+                      : 'Error en el análisis',
                   message: controller.errorMessage.value,
-                  onRetry: () => controller.analyzeImage(),
+                  // Only show retry button if it's a real error, not "not food"
+                  onRetry: controller.errorMessage.value.contains('no contiene comida')
+                      ? null
+                      : () => controller.analyzeImage(),
                   retryButtonText: 'Reintentar Análisis',
                 )
               else if (controller.analysisResult.value.isNotEmpty)
@@ -207,44 +184,6 @@ class CaptureDishPage extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const Spacer(),
-                            // Badge mostrando la fuente del análisis
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: controller.mlSource.value == 'local_ml'
-                                    ? AppColors.successGreen.withOpacity(0.2)
-                                    : AppColors.accentBlue.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    controller.mlSource.value == 'local_ml'
-                                        ? Icons.phone_android
-                                        : Icons.cloud,
-                                    size: 14,
-                                    color: controller.mlSource.value == 'local_ml'
-                                        ? AppColors.successGreen
-                                        : AppColors.accentBlue,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    controller.mlSource.value == 'local_ml'
-                                        ? 'Local'
-                                        : 'Cloud',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: controller.mlSource.value == 'local_ml'
-                                          ? AppColors.successGreen
-                                          : AppColors.accentBlue,
-                                    ),
-                                  ),
-                                ],
                               ),
                             ),
                           ],
@@ -307,10 +246,13 @@ class CaptureDishPage extends StatelessWidget {
                 ),
               const SizedBox(height: 20),
 
-              // Save button
+              // Save button (only show if it's actually food)
               if (controller.selectedImage.value != null &&
                   controller.analysisResult.value.isNotEmpty &&
-                  !controller.isAnalyzing.value)
+                  !controller.isAnalyzing.value &&
+                  !controller.analysisError.value &&
+                  controller.analyzedData['dish_name'] != 'No es comida' &&
+                  (controller.analyzedData['ingredients'] as List?)?.isNotEmpty == true)
                 ElevatedButton.icon(
                   onPressed: controller.isLoading.value
                       ? null

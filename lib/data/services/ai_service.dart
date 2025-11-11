@@ -2,95 +2,74 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'local_ml_service.dart';
 
 class AIService {
   late final GenerativeModel _model;
-  final LocalMLService _localMLService = LocalMLService();
   
   bool _geminiAvailable = false;
-  bool useLocalML = true; // Por defecto usar ML local
   
   AIService() {
     final apiKey = dotenv.env['GEMINI_API_KEY'];
     
     if (apiKey != null && apiKey.isNotEmpty) {
-      // Inicializar el modelo Gemini Flash para análisis de imágenes
+      // Initialize Gemini Flash model for image analysis
       _model = GenerativeModel(
         model: 'gemini-2.0-flash', 
         apiKey: apiKey,
       );
       _geminiAvailable = true;
-      print('✅ Gemini API disponible como respaldo');
+      print('✅ Gemini API available');
     } else {
-      print('⚠️ GEMINI_API_KEY no configurada - solo ML local disponible');
-    }
-    
-    // Inicializar ML local
-    _initializeLocalML();
-  }
-  
-  Future<void> _initializeLocalML() async {
-    try {
-      await _localMLService.initialize();
-      print('✅ ML local inicializado correctamente');
-    } catch (e) {
-      print('⚠️ Error al inicializar ML local: $e');
+      print('⚠️ GEMINI_API_KEY not configured');
     }
   }
 
-  Future<Map<String, dynamic>> analyzeDishImage(File imageFile, {bool forceGemini = false}) async {
-    // Estrategia: Intentar ML local primero, luego Gemini si falla o se fuerza
-    
-    // 1. Intentar con ML local (si está habilitado y no se fuerza Gemini)
-    if (useLocalML && !forceGemini) {
-      try {
-        print('🤖 Analizando con ML local...');
-        final result = await _localMLService.analyzeDishImage(imageFile);
-        
-        if (result['success'] == true) {
-          print('✅ Análisis local exitoso');
-          return result;
-        } else {
-          print('⚠️ ML local falló, intentando con Gemini...');
-        }
-      } catch (e) {
-        print('⚠️ Error en ML local: $e, intentando con Gemini...');
-      }
+  Future<Map<String, dynamic>> analyzeDishImage(File imageFile) async {
+    if (!_geminiAvailable) {
+      return {
+        'success': false,
+        'error': 'No hay servicios de IA disponibles. Configura GEMINI_API_KEY en el archivo .env',
+      };
     }
     
-    // 2. Fallback a Gemini (si está disponible)
-    if (_geminiAvailable) {
-      return await _analyzeDishImageWithGemini(imageFile);
-    }
-    
-    // 3. Si nada funciona, retornar error
-    return {
-      'success': false,
-      'error': 'No hay servicios de IA disponibles. Configura GEMINI_API_KEY o agrega modelos TFLite.',
-    };
+    return await _analyzeDishImageWithGemini(imageFile);
   }
   
   Future<Map<String, dynamic>> _analyzeDishImageWithGemini(File imageFile) async {
     try {
-      print('☁️ Analizando con Gemini API...');
-      // Leer la imagen como bytes
+      print('☁️ Analyzing with Gemini API...');
+      // Read image as bytes
       final imageBytes = await imageFile.readAsBytes();
       
-      // Crear el prompt
+      // Create the prompt
       final prompt = '''
-Analiza esta imagen de comida y responde ÚNICAMENTE en formato JSON con la siguiente estructura:
+Eres un asistente especializado en análisis de COMIDA y PLATILLOS.
+
+PRIMERO: Determina si la imagen contiene COMIDA, un PLATILLO o ALIMENTOS.
+
+Si la imagen NO contiene comida (por ejemplo: personas, animales, objetos, paisajes, etc.), responde ÚNICAMENTE con este JSON:
 {
-  "dish_name": "nombre del platillo en español",
-  "ingredients": ["ingrediente1", "ingrediente2", "ingrediente3", ...],
-  "description": "breve descripción del platillo"
+  "dish_name": "No es comida",
+  "ingredients": [],
+  "description": "No puedo analizar esta imagen porque no contiene comida o platillos. Por favor, toma una foto de un platillo o alimento."
 }
 
-Identifica el platillo y lista TODOS los ingredientes visibles que puedas identificar.
-Responde ÚNICAMENTE con el JSON válido, sin texto adicional, sin bloques de código markdown.
+Si la imagen SÍ contiene comida, analízala y responde en formato JSON con la siguiente estructura:
+{
+  "dish_name": "nombre del platillo en español",
+  "ingredients": ["ingrediente1 en español", "ingrediente2 en español", "ingrediente3 en español", ...],
+  "description": "descripción breve del platillo en español"
+}
+
+IMPORTANTE: 
+- Solo analiza COMIDA, PLATILLOS o ALIMENTOS
+- Identifica el platillo y lista TODOS los ingredientes visibles que puedas identificar
+- TODOS los ingredientes deben estar en ESPAÑOL (ejemplo: "Tomate", "Lechuga", "Queso", etc.)
+- La descripción debe estar en ESPAÑOL
+- Responde ÚNICAMENTE con el JSON válido, sin texto adicional, sin bloques de código markdown
 ''';
 
-      // Crear el contenido con texto e imagen
+      // Create content with text and image
       final content = [
         Content.multi([
           TextPart(prompt),
@@ -98,7 +77,7 @@ Responde ÚNICAMENTE con el JSON válido, sin texto adicional, sin bloques de c�
         ])
       ];
 
-      // Generar respuesta
+      // Generate response
       final response = await _model.generateContent(content);
       final text = response.text;
       
@@ -109,7 +88,7 @@ Responde ÚNICAMENTE con el JSON válido, sin texto adicional, sin bloques de c�
         };
       }
 
-      // Limpiar la respuesta (remover markdown si existe)
+      // Clean response (remove markdown if exists)
       String cleanedText = text.trim();
       if (cleanedText.startsWith('```json')) {
         cleanedText = cleanedText.substring(7);
@@ -122,7 +101,7 @@ Responde ÚNICAMENTE con el JSON válido, sin texto adicional, sin bloques de c�
       }
       cleanedText = cleanedText.trim();
 
-      // Parsear JSON
+      // Parse JSON
       try {
         final jsonResponse = json.decode(cleanedText);
         return {
@@ -135,7 +114,7 @@ Responde ÚNICAMENTE con el JSON válido, sin texto adicional, sin bloques de c�
           'source': 'gemini',
         };
       } catch (e) {
-        // Si falla el parsing, intentar extraer información manualmente
+        // If parsing fails, try to extract information manually
         return {
           'success': true,
           'dish_name': 'Platillo Identificado',
@@ -146,7 +125,7 @@ Responde ÚNICAMENTE con el JSON válido, sin texto adicional, sin bloques de c�
       }
       
     } catch (e) {
-      print('Error al analizar imagen con Gemini: $e');
+      print('Error analyzing image with Gemini: $e');
       return {
         'success': false,
         'error': 'Error al analizar la imagen con Gemini: $e',
@@ -154,23 +133,12 @@ Responde ÚNICAMENTE con el JSON válido, sin texto adicional, sin bloques de c�
     }
   }
   
-  /// Cambiar entre ML local y Gemini
-  void setUseLocalML(bool value) {
-    useLocalML = value;
-    print('🔄 Modo cambiado a: ${value ? "ML Local" : "Gemini API"}');
-  }
-  
-  /// Verificar si Gemini está disponible
+  /// Check if Gemini is available
   bool get isGeminiAvailable => _geminiAvailable;
-  
-  /// Liberar recursos
-  void dispose() {
-    _localMLService.dispose();
-  }
 
-  // Método alternativo usando respuesta mock para pruebas
+  // Alternative method using mock response for testing
   Future<Map<String, dynamic>> analyzeDishImageMock(File imageFile) async {
-    // Simular delay de API
+    // Simulate API delay
     await Future.delayed(const Duration(seconds: 2));
 
     return {
