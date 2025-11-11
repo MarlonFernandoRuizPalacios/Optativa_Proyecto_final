@@ -21,12 +21,13 @@ class CaptureDishPage extends StatelessWidget {
         backgroundColor: AppColors.primaryPurple,
         foregroundColor: Colors.white,
       ),
-      body: Obx(() {
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+      body: SafeArea(
+        child: Obx(() {
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
               // Image preview widget
               ImagePreviewWidget(
                 imageFile: controller.selectedImage.value,
@@ -282,7 +283,8 @@ class CaptureDishPage extends StatelessWidget {
             ],
           ),
         );
-      }),
+        }),
+      ),
     );
   }
 }

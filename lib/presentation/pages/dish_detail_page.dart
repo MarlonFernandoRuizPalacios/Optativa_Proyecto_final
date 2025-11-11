@@ -16,10 +16,11 @@ class DishDetailPage extends StatelessWidget {
         backgroundColor: AppColors.primaryPurple,
         foregroundColor: Colors.white,
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             // Image
             Image.network(
               dish.imageUrl,
@@ -151,6 +152,7 @@ class DishDetailPage extends StatelessWidget {
               ),
             ),
           ],
+        ),
         ),
       ),
     );

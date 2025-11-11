@@ -25,8 +25,9 @@ class DishesListPage extends StatelessWidget {
           ),
         ],
       ),
-      body: Obx(() {
-        if (controller.isLoading.value && controller.dishes.isEmpty) {
+      body: SafeArea(
+        child: Obx(() {
+          if (controller.isLoading.value && controller.dishes.isEmpty) {
           return const Center(child: CircularProgressIndicator());
         }
 
@@ -199,6 +200,7 @@ class DishesListPage extends StatelessWidget {
           ),
         );
       }),
+    ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           Get.to(() => const CaptureDishPage());
