@@ -1,180 +1,312 @@
-# Todo App
+# 🍽️ FoodAI - Analizador de Platillos con IA
 
-Una aplicación de gestión de tareas desarrollada en Flutter con integración de Supabase para almacenamiento de datos.
+Una aplicación Flutter que utiliza Inteligencia Artificial para identificar ingredientes de platillos a través de fotografías. Construida con Clean Architecture, Supabase y Google Gemini AI.
 
-## Características
+## 📋 Características
 
-- ✅ Gestión completa de tareas (CRUD)
-- 📅 Selector de fechas interactivo
-- 🔄 Botón de recarga para sincronizar datos
-- 🎨 Interfaz moderna y atractiva
-- ☁️ Almacenamiento en la nube con Supabase
-- 📱 Diseño responsivo
+- 📸 **Captura de fotos**: Toma fotos directamente desde la cámara o selecciona de la galería
+- 🤖 **Análisis con IA**: Identifica automáticamente el nombre del platillo e ingredientes usando Google Gemini AI
+- 💾 **Almacenamiento en la nube**: Guarda platillos e imágenes en Supabase
+- 📱 **Interfaz moderna**: UI/UX limpia y responsive con Material Design
+- 🔐 **Autenticación**: Login seguro con Supabase Auth
+- 🏗️ **Clean Architecture**: Código organizado, mantenible y escalable
+- 💿 **Sincronización Offline**: Base de datos local SQLite con sincronización automática
+- ✅ **Validación de comida**: Detecta automáticamente si la imagen contiene comida
 
-## Tecnologías Utilizadas
+## 🛠️ Tecnologías
 
-- **Flutter**: Framework de desarrollo multiplataforma
-- **GetX**: Gestión de estado y navegación
-- **Supabase**: Base de datos y backend como servicio
-- **Dart**: Lenguaje de programación
+- **Flutter** - Framework UI multiplataforma
+- **Dart** - Lenguaje de programación (^3.9.0)
+- **GetX** - Gestión de estado y navegación
+- **Supabase** - Backend as a Service (Base de datos + Storage + Auth)
+- **Google Gemini AI** - Análisis de imágenes con IA (gemini-1.5-flash)
+- **SQLite** - Base de datos local con sincronización offline-first
+- **Image Picker** - Captura de fotos
+- **Clean Architecture** - Arquitectura en capas
 
-## Configuración de la Base de Datos
+## 📦 Paquetes Utilizados
 
-### Estructura de la Tabla `tasks`
-
-Para configurar la base de datos en Supabase, ejecuta el siguiente SQL:
-
-```sql
--- Crear la tabla tasks
-CREATE TABLE tasks (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  title TEXT NOT NULL,
-  description TEXT,
-  date DATE NOT NULL,
-  start_time TIMESTAMP WITH TIME ZONE NOT NULL,
-  end_time TIMESTAMP WITH TIME ZONE NOT NULL,
-  is_completed BOOLEAN DEFAULT FALSE,
-  image_url TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Crear índices para mejorar el rendimiento
-CREATE INDEX idx_tasks_start_time ON tasks(start_time);
-CREATE INDEX idx_tasks_is_completed ON tasks(is_completed);
-
--- Habilitar Row Level Security (RLS)
-ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
-
--- Política para permitir todas las operaciones (ajustar según necesidades de seguridad)
-CREATE POLICY "Allow all operations on tasks" ON tasks
-  FOR ALL USING (true);
+```yaml
+dependencies:
+  get: ^4.6.6                      # State management
+  supabase_flutter: ^2.5.6         # Backend as a Service
+  google_generative_ai: ^0.4.7     # Google Gemini AI
+  sqflite: ^2.4.2                  # Local database
+  flutter_dotenv: ^5.1.0           # Environment variables
+  image_picker: ^1.0.7             # Image capture
+  http: ^1.2.0                     # HTTP client
+  path_provider: ^2.1.2            # File system paths
+  permission_handler: ^11.3.0      # Device permissions
+  intl: ^0.19.0                    # Internationalization
 ```
 
-### Campos de la Tabla
+## 📦 Estructura del Proyecto (Clean Architecture)
 
-| Campo          | Tipo                     | Descripción                                           |
-| -------------- | ------------------------ | ----------------------------------------------------- |
-| `id`           | UUID                     | Identificador único de la tarea (clave primaria)      |
-| `title`        | TEXT                     | Título de la tarea (requerido)                        |
-| `description`  | TEXT                     | Descripción detallada de la tarea (opcional)          |
-| `date`         | DATE                     | Fecha de creación de la tarea (opcional)              |
-| `start_time`   | TIMESTAMP WITH TIME ZONE | Fecha y hora de inicio de la tarea                    |
-| `end_time`     | TIMESTAMP WITH TIME ZONE | Fecha y hora de finalización de la tarea              |
-| `is_completed` | BOOLEAN                  | Estado de completado de la tarea (por defecto: false) |
-| `image_url`    | TEXT                     | URL de la imagen asociada a la tarea (opcional)       |
-| `created_at`   | TIMESTAMP WITH TIME ZONE | Fecha de creación del registro                        |
-| `updated_at`   | TIMESTAMP WITH TIME ZONE | Fecha de última actualización                         |
-
-## Configuración tabla para `map_points`
-
-```sql
--- Tabla de puntos de mapa
-create table if not exists public.map_points (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  latitude double precision not null,
-  longitude double precision not null,
-  user_id uuid not null references auth.users(id) on delete cascade,
-  created_at timestamp with time zone not null default now()
-);
-
--- Política RLS
-alter table public.map_points enable row level security;
-
--- Permitir lectura/escritura a usuarios autenticados solo sobre sus registros
-create policy "read own points" on public.map_points
-  for select using (auth.uid() = user_id);
-
-create policy "insert own points" on public.map_points
-  for insert with check (auth.uid() = user_id);
+```
+lib/
+├── core/
+│   ├── config/          # Configuraciones (Supabase)
+│   │   └── supabase_config.dart
+│   └── constants/       # Constantes (Colores, etc)
+│       └── app_colors.dart
+├── data/
+│   ├── repositories/    # Implementación de repositorios
+│   │   └── dish_repository_impl.dart
+│   └── services/        # Servicios (AI, Storage, DB Local)
+│       ├── ai_service.dart
+│       ├── storage_service.dart
+│       └── local_database_service.dart
+├── domain/
+│   ├── entities/        # Entidades de dominio
+│   │   └── dish_entity.dart
+│   └── repositories/    # Interfaces de repositorios
+│       └── dish_repository.dart
+└── presentation/
+    ├── controllers/     # Controladores GetX
+    │   ├── dish_controller.dart
+    │   └── auth_controller.dart
+    ├── pages/           # Pantallas
+    │   ├── auth_page.dart
+    │   ├── auth_gate.dart
+    │   ├── home_menu_page.dart
+    │   ├── capture_dish_page.dart
+    │   ├── dishes_list_page.dart
+    │   └── dish_detail_page.dart
+    └── widgets/         # Widgets reutilizables
+        ├── image_preview_widget.dart
+        ├── action_button_widget.dart
+        ├── loading_card_widget.dart
+        ├── error_card_widget.dart
+        ├── dish_card_widget.dart
+        └── ingredients_list_widget.dart
 ```
 
-## Configuración de políticas para `storage`
+## 🚀 Configuración
 
-```sql
--- Permitir subidas para usuarios autenticados:
-CREATE POLICY "Authenticated uploads to task-images" ON storage.objects FOR INSERT TO authenticated WITH CHECK ( bucket_id = 'task-images' AND owner = auth.uid() );
+### 1. Clonar el repositorio
 
--- Permitir lectura pública
-CREATE POLICY "Public read for task-images" ON storage.objects FOR SELECT USING ( bucket_id = 'task-images' );
+```bash
+git clone https://github.com/MarlonFernandoRuizPalacios/Optativa_Proyecto_final.git
+cd Optativa_Proyecto_final
 ```
 
-## Configuración del Proyecto
-
-### 1. Configurar Variables de Entorno
-
-Crea un archivo `.env` en la raíz del proyecto con tus credenciales de Supabase:
-
-```env
-SUPABASE_URL=tu_supabase_url_aqui
-SUPABASE_ANON_KEY=tu_supabase_anon_key_aqui
-```
-
-### 2. Instalar Dependencias
+### 2. Instalar dependencias
 
 ```bash
 flutter pub get
 ```
 
-### 3. Ejecutar la Aplicación
+### 3. Configurar Supabase
+
+#### A. Crear proyecto en Supabase
+
+1. Ve a [supabase.com](https://supabase.com) y crea un nuevo proyecto
+2. Espera a que se complete la inicialización
+
+#### B. Configurar la base de datos
+
+1. En el panel de Supabase, ve a **SQL Editor**
+2. Abre el archivo `supabase_setup.sql` de este proyecto
+3. Copia y pega el contenido en el SQL Editor
+4. Ejecuta el script (esto creará la tabla `dishes` con todas sus políticas)
+
+#### C. Configurar Storage
+
+1. Ve a **Storage** en el panel de Supabase
+2. Crea un nuevo bucket llamado `dishes` (lowercase)
+3. Configura el bucket como **público**
+
+Las políticas RLS ya están incluidas en el script SQL.
+
+#### D. Obtener credenciales
+
+1. Ve a **Settings** > **API**
+2. Copia tu `URL` y `anon public` key
+
+### 4. Configurar Google Gemini API
+
+1. Ve a [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Crea una cuenta o inicia sesión
+3. Crea una API Key
+4. Copia la key
+
+**Nota**: Gemini AI tiene un tier gratuito generoso. Revisa los límites en [ai.google.dev](https://ai.google.dev/pricing)
+
+### 5. Crear archivo .env
+
+Crea un archivo `.env` en la raíz del proyecto:
+
+```env
+SUPABASE_URL=tu_supabase_url
+SUPABASE_ANON_KEY=tu_supabase_anon_key
+GEMINI_API_KEY=tu_gemini_api_key
+```
+
+### 6. Configurar permisos (Android)
+
+Los permisos ya están configurados en `android/app/src/main/AndroidManifest.xml`:
+
+```xml
+<uses-permission android:name="android.permission.CAMERA"/>
+<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+<uses-permission android:name="android.permission.INTERNET"/>
+```
+
+### 7. Configurar permisos (iOS)
+
+Los permisos ya están en `ios/Runner/Info.plist`:
+
+```xml
+<key>NSCameraUsageDescription</key>
+<string>Necesitamos acceso a la cámara para tomar fotos de platillos</string>
+<key>NSPhotoLibraryUsageDescription</key>
+<string>Necesitamos acceso a la galería para seleccionar fotos</string>
+```
+
+## ▶️ Ejecutar la aplicación
 
 ```bash
 flutter run
 ```
 
-## Arquitectura del Proyecto
+## 📱 Uso de la aplicación
 
-El proyecto sigue una arquitectura limpia con separación de responsabilidades:
+1. **Registro/Login**: Crea una cuenta o inicia sesión
+2. **Capturar foto**: Presiona el botón "Tomar Foto"
+3. **Tomar/Seleccionar imagen**: Usa la cámara o selecciona de la galería
+4. **Análisis automático**: La IA analizará la imagen automáticamente
+5. **Revisar resultados**: Verifica el nombre del platillo e ingredientes detectados
+6. **Guardar**: Presiona "Guardar Platillo" para almacenarlo
+7. **Ver lista**: Los platillos guardados aparecerán en la lista principal
+
+## 🏗️ Arquitectura Implementada
+
+### Clean Architecture - Separación de Capas
 
 ```
-lib/
-├── core/
-│   ├── config/          # Configuración de Supabase
-│   ├── constants/       # Constantes de la aplicación
-│   └── utils/          # Utilidades generales
-├── data/
-│   ├── models/         # Modelos de datos
-│   └── repositories/   # Implementación de repositorios
-├── domain/
-│   ├── entities/       # Entidades del dominio
-│   ├── repositories/   # Interfaces de repositorios
-│   └── usecases/      # Casos de uso
-└── presentation/
-    ├── controllers/    # Controladores GetX
-    ├── pages/         # Páginas de la aplicación
-    └── widgets/       # Widgets reutilizables
+┌─────────────────────────────────────────────────────────┐
+│                    PRESENTATION                          │
+│  ┌──────────┐  ┌──────────┐  ┌─────────────────────┐  │
+│  │  Pages   │  │ Widgets  │  │ Controllers (GetX)  │  │
+│  └──────────┘  └──────────┘  └─────────────────────┘  │
+└─────────────────────────────────────────────────────────┘
+                         ▼
+┌─────────────────────────────────────────────────────────┐
+│                     DOMAIN                               │
+│  ┌──────────────┐  ┌─────────────────────────────┐     │
+│  │  Entities    │  │ Repository Interfaces       │     │
+│  └──────────────┘  └─────────────────────────────┘     │
+└─────────────────────────────────────────────────────────┘
+                         ▼
+┌─────────────────────────────────────────────────────────┐
+│                      DATA                                │
+│  ┌──────────────┐  ┌─────────────────┐                 │
+│  │ Repositories │  │    Services     │                 │
+│  └──────────────┘  └─────────────────┘                 │
+│                     │                                    │
+│   ┌─────────────────┼────────────────┐                 │
+│   │                 │                │                 │
+│ ┌─▼────┐     ┌──────▼───┐   ┌──────▼───┐             │
+│ │ Supabase│   │  SQLite  │   │ Gemini AI│             │
+│ │(Cloud) │   │ (Local)  │   │  (API)   │             │
+│ └────────┘   └──────────┘   └──────────┘             │
+└─────────────────────────────────────────────────────────┘
 ```
 
-## Funcionalidades Principales
+### Capas del Proyecto
 
-### Gestión de Tareas
+**PRESENTATION (UI)**
+- **Pages**: Pantallas de la aplicación
+- **Widgets**: Componentes reutilizables
+- **Controllers**: Lógica de presentación con GetX
 
-- **Crear**: Agregar nuevas tareas con título, descripción y horarios
-- **Leer**: Visualizar tareas organizadas por fecha
-- **Actualizar**: Modificar tareas existentes y marcar como completadas
-- **Eliminar**: Remover tareas no deseadas
+**DOMAIN (Reglas de Negocio)**
+- **Entities**: Modelos de dominio puro
+- **Repositories**: Interfaces (contratos)
 
-### Navegación por Fechas
+**DATA (Acceso a Datos)**
+- **Repositories**: Implementaciones de interfaces
+- **Services**: Servicios externos (IA, Storage, DB)
 
-- Selector de fechas intuitivo
-- Carga automática de tareas por fecha seleccionada
-- Indicadores visuales de días con tareas
+## 🔧 Funcionalidades Implementadas
 
-### Sincronización
+### ✅ Widgets Reutilizables (6)
+- ImagePreviewWidget
+- ActionButtonWidget
+- LoadingCardWidget
+- ErrorCardWidget
+- DishCardWidget
+- IngredientsListWidget
 
-- Botón de recarga manual para sincronizar datos
-- Indicadores de carga durante las operaciones
-- Manejo de errores y estados de carga
+### ✅ Clean Architecture
+- Separación de capas (Presentation/Domain/Data)
+- Inyección de dependencias
+- Código mantenible y escalable
 
-## Contribución
+### ✅ Supabase
+- Autenticación (Auth)
+- Base de datos PostgreSQL (dishes table)
+- Storage (dishes bucket)
+- Row Level Security (RLS)
 
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
+### ✅ Base de Datos Locales
+- SQLite (sqflite)
+- Sincronización offline-first
+- Cache local de datos
+- Trabajo sin conexión
 
-## Licencia
+### ✅ Integración con IA
+- Google Gemini AI (gemini-1.5-flash)
+- Análisis de imágenes
+- Identificación de platillos
+- Extracción de ingredientes
+- Validación de comida
 
-Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
+### ✅ Manejo de Estado Global
+- GetX (State Management)
+- Variables reactivas (.obs)
+- Controladores globales
+- Navegación declarativa
+
+## 🐛 Solución de problemas
+
+### Error: "Storage bucket not found"
+- Verifica que creaste el bucket `dishes` en Supabase Storage
+- Asegúrate de que el bucket sea público
+
+### Error: "Row Level Security policy violation"
+- Verifica que ejecutaste el script SQL completo
+- Revisa que las políticas RLS estén habilitadas
+
+### La IA no funciona
+- Verifica tu GEMINI_API_KEY en el archivo `.env`
+- Asegúrate de tener acceso a Gemini API
+- Revisa los límites de uso gratuito
+
+### Problemas con la cámara
+- Verifica los permisos en AndroidManifest.xml (Android)
+- Verifica los permisos en Info.plist (iOS)
+- Prueba en un dispositivo real
+
+## 📚 Documentación Adicional
+
+- `FOODAI_README.md` - Documentación específica de FoodAI
+- `GEMINI_SETUP_GUIDE.md` - Guía de configuración de Gemini AI
+- `SUPABASE_SETUP_GUIDE.md` - Guía de configuración de Supabase
+- `VERIFICACION_REQUISITOS.md` - Verificación de requisitos del proyecto
+- `VERIFICACION_FINAL.md` - Verificación final completa
+
+## 📄 Licencia
+
+Este proyecto es de código abierto y está disponible bajo la licencia MIT.
+
+## 👨‍💻 Autor
+
+Desarrollado siguiendo los principios de Clean Architecture y mejores prácticas de Flutter.
+
+**Repositorio:** https://github.com/MarlonFernandoRuizPalacios/Optativa_Proyecto_final
+
+---
+
+**¡Disfruta analizando tus platillos con IA! 🍕🤖**
